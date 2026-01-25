@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarcería App Nube</title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <style>
+        /* ESTILOS GENERALES */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #e0f7fa; margin: 0; padding: 10px; display: flex; justify-content: center; }
+        
+        .main-card {
+            background: white; width: 100%; max-width: 500px; padding: 15px;
+            border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-top: 5px solid #00acc1;
+        }
+
+        /* HEADER & STATUS */
+        .header { text-align: center; margin-bottom: 10px; border-bottom: 1px dashed #ddd; position: relative; }
+        .logo-img { width: 90px; height: auto; }
+        h1 { margin: 5px 0; color: #006064; font-size: 20px; text-transform: uppercase; }
+        
+        /* Indicador de Estado */
+        .status-bar { 
+            display: flex; justify-content: space-between; align-items: center; 
+            background: #eee; padding: 5px 10px; border-radius: 20px; font-size: 11px; margin-bottom: 10px;
+        }
+        .connection-dot { width: 10px; height: 10px; border-radius: 50%; background: grey; display: inline-block; margin-right: 5px; }
+        .online { background: #4caf50; box-shadow: 0 0 5px #4caf50; }
+        .offline { background: #f44336; }
+        .pending-count { color: #d32f2f; font-weight: bold; display: none; }
+
+        /* INPUTS */
+        .input-group { display: flex; gap: 5px; margin-bottom: 8px; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; width: 100%; }
+        input:focus { border-color: #00bcd4; outline: none; }
+        
+        .btn { border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; width: 100%; font-size: 16px; }
+        .btn-add { background-color: #00838f; width: auto; flex: 1; }
+        .btn-print { background-color: #2e7d32; margin-top: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .btn-sync { background-color: #ff9800; font-size: 12px; padding: 5px 10px; width: auto; display: none; }
+        
+        /* TABLA */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        th { text-align: left; border-bottom: 2px solid #333; color: #555; }
+        td { padding: 8px 2px; border-bottom: 1px dotted #ccc; }
+        .text-right { text-align: right; }
+        .btn-delete { color: red; background: none; border: none; font-size: 18px; padding: 0 10px; }
+
+        /* TOTALES */
+        .totales-section { background-color: #f1f8e9; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #c5e1a5; }
+        .big-total { font-size: 24px; font-weight: bold; color: #333; display: flex; justify-content: space-between; }
+        
+        /* PAGO UI */
+        .pago-ui { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
+        .radio-group { display: flex; gap: 10px; font-size: 14px; }
+        
+        /* IMPRESIÓN */
+        @media print {
+            .no-print, .status-bar, .admin-zone { display: none !important; }
+            .main-card { box-shadow: none; border: none; width: 100%; max-width: 100%; padding: 0; }
+            table { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-card">
+        <div class="status-bar no-print">
+            <div>
+                <span id="conn-dot" class="connection-dot offline"></span>
+                <span id="conn-text">Desconectado</span>
+            </div>
+            <div>
+                <span id="pending-msg" class="pending-count">⚠️ <span id="pending-num">0</span> sin subir</span>
+                <button id="btn-sync" class="btn btn-sync" onclick="sincronizarPendientes()">☁️ SUBIR AHORA</button>
+            </div>
+        </div>
+
+        <div class="header">
+            <img src="jarceria_las_peques.png" alt="Logo" class="logo-img">
+            <h1>Jarcería "Las Peques"</h1>
+            <div style="font-size: 12px;">Folio: #<span id="folio-val">0000</span></div>
+        </div>
+
+        <div class="no-print">
+            <div class="input-group">
+                <input list="lista-productos" id="codigo" placeholder="Código" style="width: 30%;" onchange="buscarProducto()">
+                <datalist id="lista-productos"></datalist>
+                <input type="text" id="desc" placeholder="Producto">
+            </div>
+            <div class="input-group">
+                <input type="number" id="cantidad" placeholder="Cant" style="width: 25%;">
+                <input type="number" id="precio" placeholder="$ Precio" style="width: 35%;">
+                <button class="btn btn-add" onclick="agregarProducto()">+</button>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Cant</th>
+                    <th>Desc</th>
+                    <th class="text-right">$$</th>
+                    <th class="no-print"></th>
+                </tr>
+            </thead>
+            <tbody id="tabla-productos"></tbody>
+        </table>
+
+        <div class="totales-section">
+            <div class="big-total">
+                <span>TOTAL:</span>
+                <span>$<span id="total-pagar">0.00</span></span>
+            </div>
+            
+            <div class="pago-ui no-print">
+                <div class="radio-group">
+                    <label><input type="radio" name="pago" value="efectivo" checked onclick="togglePago()"> Efectivo</label>
+                    <label><input type="radio" name="pago" value="tarjeta" onclick="togglePago()"> Tarjeta</label>
+                </div>
+                <input type="number" id="paga-con" placeholder="Recibido" oninput="calcCambio()" style="text-align: right;">
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-top: 5px; font-weight: bold; color: #2e7d32;">
+                <span>Cambio:</span>
+                <span>$<span id="cambio">0.00</span></span>
+            </div>
+        </div>
+
+        <div class="no-print">
+            <button class="btn btn-print" onclick="finalizarVenta()">✅ COBRAR</button>
+            <div style="text-align: center; margin-top: 10px;">
+                <a href="#" onclick="verAdmin()" style="color: #999; font-size: 12px; text-decoration: none;">Administrar / Cargar Excel</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-panel" class="main-card no-print" style="display: none; margin-top: 20px; background: #eee;">
+        <h3>Administración</h3>
+        <input type="file" id="inputExcel" accept=".xlsx" style="background: white; margin-bottom: 10px;">
+        <button class="btn" style="background:#555; padding: 10px;" onclick="location.reload()">Cerrar / Recargar</button>
+    </div>
+
+<script>
+    // ============================================
+    // CONFIGURACIÓN (Poner URL de Google Apps Script)
+    // ============================================
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx__yNNyhH7Y0e6RAUSYFT3zObF4N-u15jvNAE4jf-V4mq2ugELOD5OOtonQJ9zgxhruA/exec";
+    
+    let baseDeDatos = {};
+    let total = 0;
+    let carritoNombres = []; // Para guardar detalle
+    
+    // KEYS Storage
+    const K_BD = 'jarc_bd';
+    const K_FOLIO = 'jarc_folio';
+    const K_PENDIENTES = 'jarc_pendientes';
+
+    window.onload = function() {
+        checkInternet();
+        cargarDatosLocales();
+        actualizarPendientesUI();
+        
+        // Escuchar Excel
+        document.getElementById('inputExcel').addEventListener('change', leerExcel, false);
+        // Escuchar estado red
+        window.addEventListener('online', checkInternet);
+        window.addEventListener('offline', checkInternet);
+        
+        setInterval(checkInternet, 5000); // Checar cada 5 seg
+    };
+
+    // ============================================
+    // LÓGICA DE SINCRONIZACIÓN Y NUBE
+    // ============================================
+    
+    function checkInternet() {
+        const dot = document.getElementById('conn-dot');
+        const text = document.getElementById('conn-text');
+        
+        if(navigator.onLine) {
+            dot.className = "connection-dot online";
+            text.innerText = "En Línea (Nube Activa)";
+            // Intentar subir pendientes automáticamente
+            let pendientes = JSON.parse(localStorage.getItem(K_PENDIENTES) || "[]");
+            if(pendientes.length > 0) sincronizarPendientes();
+        } else {
+            dot.className = "connection-dot offline";
+            text.innerText = "Sin Internet (Modo Local)";
+        }
+    }
+
+    function enviarVentaNube(ventaObj) {
+        // Si no hay URL configurada, abortar
+        if(GOOGLE_SCRIPT_URL.includes("AQUI_PEGA")) {
+            alert("Falta configurar la URL del Script de Google");
+            return;
+        }
+
+        // Usamos fetch con mode 'no-cors' para evitar errores simples de CORS en Apps Script
+        // Ojo: 'no-cors' no permite leer la respuesta, pero envía los datos.
+        const opciones = {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ventaObj)
+        };
+
+        fetch(GOOGLE_SCRIPT_URL, opciones)
+        .then(() => {
+            console.log("Enviado a nube");
+        })
+        .catch(err => {
+            console.error("Fallo envio", err);
+            guardarPendiente(ventaObj); // Si falla el fetch, guardar local
+        });
+    }
+
+    function guardarPendiente(ventaObj) {
+        let lista = JSON.parse(localStorage.getItem(K_PENDIENTES) || "[]");
+        lista.push(ventaObj);
+        localStorage.setItem(K_PENDIENTES, JSON.stringify(lista));
+        actualizarPendientesUI();
+    }
+
+    function actualizarPendientesUI() {
+        let lista = JSON.parse(localStorage.getItem(K_PENDIENTES) || "[]");
+        let num = lista.length;
+        document.getElementById('pending-num').innerText = num;
+        
+        if(num > 0) {
+            document.getElementById('pending-msg').style.display = "inline";
+            document.getElementById('btn-sync').style.display = "inline-block";
+        } else {
+            document.getElementById('pending-msg').style.display = "none";
+            document.getElementById('btn-sync').style.display = "none";
+        }
+    }
+
+    function sincronizarPendientes() {
+        if(!navigator.onLine) {
+            alert("Sigues sin internet. Intenta luego.");
+            return;
+        }
+        
+        let lista = JSON.parse(localStorage.getItem(K_PENDIENTES) || "[]");
+        if(lista.length === 0) return;
+
+        alert("Subiendo " + lista.length + " ventas pendientes...");
+        
+        // Enviar uno por uno con pequeño delay para no saturar
+        lista.forEach((venta, index) => {
+            setTimeout(() => {
+                enviarVentaNube(venta);
+            }, index * 1000);
+        });
+
+        // Asumimos éxito y limpiamos (riesgoso pero funcional para app simple)
+        localStorage.removeItem(K_PENDIENTES);
+        actualizarPendientesUI();
+    }
+
+    // ============================================
+    // LÓGICA DE VENTA (Simplificada)
+    // ============================================
+
+    function finalizarVenta() {
+        if(total <= 0) return;
+        
+        // 1. Datos de la venta
+        let folio = parseInt(localStorage.getItem(K_FOLIO) || 1);
+        let esTarjeta = document.querySelector('input[name="pago"]:checked').value === 'tarjeta';
+        
+        let ventaObj = {
+            fecha: new Date().toLocaleDateString(),
+            hora: new Date().toLocaleTimeString(),
+            folio: folio,
+            total: total,
+            metodo: esTarjeta ? 'TARJETA' : 'EFECTIVO',
+            detalle: carritoNombres.join(", ") // Lista simple de productos
+        };
+
+        // 2. Lógica de envío
+        if(navigator.onLine) {
+            enviarVentaNube(ventaObj);
+        } else {
+            guardarPendiente(ventaObj);
+        }
+
+        // 3. UI
+        window.print();
+        
+        // 4. Limpieza
+        setTimeout(() => {
+            if(confirm("¿Venta completada?")) {
+                localStorage.setItem(K_FOLIO, folio + 1);
+                document.getElementById('folio-val').innerText = (folio + 1).toString().padStart(4, '0');
+                limpiar();
+            }
+        }, 500);
+    }
+    
+    // Funciones auxiliares POS
+    function buscarProducto() {
+        let c = document.getElementById('codigo').value;
+        if(baseDeDatos[c]) {
+            document.getElementById('desc').value = baseDeDatos[c].nombre;
+            document.getElementById('precio').value = baseDeDatos[c].precio;
+            document.getElementById('cantidad').value = 1;
+        }
+    }
+    
+    function agregarProducto() {
+        let p = parseFloat(document.getElementById('precio').value);
+        let c = parseFloat(document.getElementById('cantidad').value);
+        let d = document.getElementById('desc').value;
+        
+        if(!d || isNaN(p)) return;
+        
+        let sub = p * c;
+        total += sub;
+        carritoNombres.push(`(${c}) ${d}`);
+        
+        let tr = `<tr><td>${c}</td><td>${d}</td><td class="text-right">$${sub.toFixed(2)}</td><td class="no-print"><button class="btn-delete" onclick="borrar(this, ${sub})">×</button></td></tr>`;
+        document.getElementById('tabla-productos').innerHTML += tr;
+        
+        updateTotal();
+        document.getElementById('codigo').value = "";
+        document.getElementById('desc').value = "";
+        document.getElementById('cantidad').value = "";
+        document.getElementById('precio').value = "";
+        document.getElementById('codigo').focus();
+    }
+    
+    function borrar(btn, val) {
+        btn.closest('tr').remove();
+        total -= val;
+        updateTotal();
+    }
+    
+    function updateTotal() {
+        document.getElementById('total-pagar').innerText = total.toFixed(2);
+        togglePago();
+    }
+    
+    function togglePago() {
+        let esTarjeta = document.querySelector('input[name="pago"]:checked').value === 'tarjeta';
+        let input = document.getElementById('paga-con');
+        if(esTarjeta) {
+            input.value = total.toFixed(2);
+            input.disabled = true;
+            document.getElementById('cambio').innerText = "0.00";
+        } else {
+            input.disabled = false;
+            calcCambio();
+        }
+    }
+    
+    function calcCambio() {
+        let pag = parseFloat(document.getElementById('paga-con').value) || 0;
+        document.getElementById('cambio').innerText = (pag - total).toFixed(2);
+    }
+    
+    function limpiar() {
+        total = 0;
+        carritoNombres = [];
+        document.getElementById('tabla-productos').innerHTML = "";
+        updateTotal();
+        document.getElementById('paga-con').value = "";
+    }
+
+    // Funciones Admin
+    function verAdmin() { document.getElementById('admin-panel').style.display = 'block'; }
+    
+    function cargarDatosLocales() {
+        let d = localStorage.getItem(K_BD);
+        let f = localStorage.getItem(K_FOLIO) || 1;
+        document.getElementById('folio-val').innerText = f.toString().padStart(4, '0');
+        if(d) {
+            baseDeDatos = JSON.parse(d);
+            let dl = document.getElementById('lista-productos');
+            for(let k in baseDeDatos) {
+                let op = document.createElement('option');
+                op.value = k;
+                op.label = baseDeDatos[k].nombre;
+                dl.appendChild(op);
+            }
+        }
+    }
+    
+    function leerExcel(e) {
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            let wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+            let json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            let nuevaBD = {};
+            json.forEach(r => { if(r.id) nuevaBD[r.id] = {nombre: r.nombre, precio: r.precio}; });
+            localStorage.setItem(K_BD, JSON.stringify(nuevaBD));
+            location.reload();
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    }
+</script>
+</body>
+</html>
