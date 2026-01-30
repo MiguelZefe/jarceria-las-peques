@@ -56,10 +56,29 @@
         .radio-group { display: flex; gap: 10px; font-size: 14px; }
         
         /* IMPRESIÓN */
+        /* ESTILOS DE IMPRESIÓN OPTIMIZADOS (PDF MÁS RÁPIDO) */
         @media print {
-            .no-print, .status-bar, .admin-zone { display: none !important; }
-            .main-card { box-shadow: none; border: none; width: 100%; max-width: 100%; padding: 0; }
-            table { font-size: 12px; }
+            @page { size: auto; margin: 0mm; } /* Quita encabezados y pies de pág del navegador */
+            body { background: white; margin: 0; padding: 10px; }
+            
+            /* Ocultar todo lo que no es el ticket */
+            .no-print, .status-bar, .admin-zone, #btn-sync, .btn, .input-group { display: none !important; }
+            
+            /* Ajustar el ticket para que sea ligero */
+            .main-card { 
+                box-shadow: none; border: none; width: 100%; max-width: 100%; 
+                padding: 0; margin: 0; border-top: none; 
+            }
+            
+            /* Forzar textos en negro puro para ahorrar tinta y procesador */
+            h1, span, div, td, th { color: black !important; }
+            
+            /* Ajuste de fuentes para ticket */
+            table { font-size: 11px; width: 100%; }
+            h1 { font-size: 16px; margin-bottom: 2px; }
+            
+            /* Asegurar que la fecha se vea */
+            #fecha-ticket-container { display: block !important; margin-bottom: 10px; font-size: 11px; }
         }
     </style>
 </head>
@@ -80,7 +99,11 @@
         <div class="header">
             <img src="jarceria_las_peques.png" alt="Logo" class="logo-img">
             <h1>Jarcería "Las Peques"</h1>
-            <div style="font-size: 12px;">Folio: #<span id="folio-val">0000</span></div>
+            <div id="fecha-ticket-container" style="font-size: 12px; color: #555;">
+                <span id="fecha-ticket">--/--/---- --:--</span>
+            </div>
+
+            <div style="font-size: 12px; margin-top: 5px;">Folio: #<span id="folio-val">0000</span></div>
         </div>
 
         <div class="no-print">
@@ -99,7 +122,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>Cant</th>
+                    <th>Cantidad</th>
                     <th>Desc</th>
                     <th class="text-right">$$</th>
                     <th class="no-print"></th>
@@ -266,34 +289,45 @@
     // ============================================
 
     function finalizarVenta() {
-        if(total <= 0) return;
+        if(total <= 0) {
+            alert("El carrito está vacío.");
+            return;
+        }
         
-        // 1. Datos de la venta
+        // 1. ACTUALIZAR FECHA Y HORA EXACTA PARA EL TICKET
+        const ahora = new Date();
+        const fechaStr = ahora.toLocaleDateString() + ' ' + ahora.toLocaleTimeString();
+        document.getElementById('fecha-ticket').innerText = fechaStr;
+
+        // 2. PREPARAR DATOS
         let folio = parseInt(localStorage.getItem(K_FOLIO) || 1);
         let esTarjeta = document.querySelector('input[name="pago"]:checked').value === 'tarjeta';
         
         let ventaObj = {
-            fecha: new Date().toLocaleDateString(),
-            hora: new Date().toLocaleTimeString(),
+            fecha: now.toLocaleDateString(),
+            hora: now.toLocaleTimeString(),
             folio: folio,
             total: total,
             metodo: esTarjeta ? 'TARJETA' : 'EFECTIVO',
-            detalle: carritoNombres.join(", ") // Lista simple de productos
+            detalle: carritoNombres.join(", ")
         };
 
-        // 2. Lógica de envío
+        // 3. IMPRIMIR PRIMERO (Para que el usuario sienta rapidez)
+        // El navegador bloqueará el script hasta que se cierre el diálogo de impresión
+        window.print();
+        
+        // 4. LÓGICA DE FONDO (Se ejecuta al cerrar/aceptar la impresión)
+        // Guardar en la nube o local
         if(navigator.onLine) {
             enviarVentaNube(ventaObj);
         } else {
             guardarPendiente(ventaObj);
         }
 
-        // 3. UI
-        window.print();
-        
-        // 4. Limpieza
+        // 5. LIMPIEZA Y SIGUIENTE FOLIO
+        // Usamos un pequeño timeout para dar tiempo a que la UI respire
         setTimeout(() => {
-            if(confirm("¿Venta completada?")) {
+            if(confirm("¿El ticket salió bien? (Aceptar para nuevo folio)")) {
                 localStorage.setItem(K_FOLIO, folio + 1);
                 document.getElementById('folio-val').innerText = (folio + 1).toString().padStart(4, '0');
                 limpiar();
