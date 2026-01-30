@@ -57,29 +57,39 @@
         
         /* IMPRESIÓN */
         /* ESTILOS DE IMPRESIÓN OPTIMIZADOS (PDF MÁS RÁPIDO) */
-        @media print {
-            @page { size: auto; margin: 0mm; } /* Quita encabezados y pies de pág del navegador */
-            body { background: white; margin: 0; padding: 10px; }
-            
-            /* Ocultar todo lo que no es el ticket */
-            .no-print, .status-bar, .admin-zone, #btn-sync, .btn, .input-group { display: none !important; }
-            
-            /* Ajustar el ticket para que sea ligero */
-            .main-card { 
-                box-shadow: none; border: none; width: 100%; max-width: 100%; 
-                padding: 0; margin: 0; border-top: none; 
-            }
-            
-            /* Forzar textos en negro puro para ahorrar tinta y procesador */
-            h1, span, div, td, th { color: black !important; }
-            
-            /* Ajuste de fuentes para ticket */
-            table { font-size: 11px; width: 100%; }
-            h1 { font-size: 16px; margin-bottom: 2px; }
-            
-            /* Asegurar que la fecha se vea */
-            #fecha-ticket-container { display: block !important; margin-bottom: 10px; font-size: 11px; }
+       @media print {
+        @page { size: auto; margin: 0mm; }
+        
+        body { 
+            background-color: white; 
+            margin: 0; 
+            padding: 0; 
         }
+
+        /* Ocultamos botones y cosas que no son ticket */
+        .no-print, .status-bar, .admin-zone, #btn-sync, .btn, .input-group, #admin-panel { 
+            display: none !important; 
+        }
+        
+        /* Aseguramos que el ticket se vea */
+        .main-card { 
+            display: block !important; /* IMPORTANTE */
+            box-shadow: none; 
+            border: none; 
+            width: 100%; 
+            max-width: 100%; 
+            padding: 5px; 
+            margin: 0;
+        }
+
+        /* Textos negros para la impresora térmica */
+        body, h1, span, div, td, th { 
+            color: black !important; 
+        }
+        
+        table { font-size: 12px; width: 100%; }
+        #fecha-ticket-container { display: block !important; margin-bottom: 5px;}
+    }
     </style>
 </head>
 <body>
@@ -289,50 +299,53 @@
     // ============================================
 
     function finalizarVenta() {
+        // 1. Validar que haya productos
         if(total <= 0) {
             alert("El carrito está vacío.");
             return;
         }
         
-        // 1. ACTUALIZAR FECHA Y HORA EXACTA PARA EL TICKET
+        // 2. OBTENER FECHA (Corrección aquí)
         const ahora = new Date();
-        const fechaStr = ahora.toLocaleDateString() + ' ' + ahora.toLocaleTimeString();
-        document.getElementById('fecha-ticket').innerText = fechaStr;
+        const fechaStr = ahora.toLocaleDateString();
+        const horaStr = ahora.toLocaleTimeString();
 
-        // 2. PREPARAR DATOS
+        // Actualizar etiqueta visual del ticket
+        document.getElementById('fecha-ticket').innerText = fechaStr + ' ' + horaStr;
+
+        // 3. PREPARAR DATOS
         let folio = parseInt(localStorage.getItem(K_FOLIO) || 1);
         let esTarjeta = document.querySelector('input[name="pago"]:checked').value === 'tarjeta';
         
         let ventaObj = {
-            fecha: now.toLocaleDateString(),
-            hora: now.toLocaleTimeString(),
+            fecha: fechaStr,
+            hora: horaStr,
             folio: folio,
             total: total,
             metodo: esTarjeta ? 'TARJETA' : 'EFECTIVO',
             detalle: carritoNombres.join(", ")
         };
 
-        // 3. IMPRIMIR PRIMERO (Para que el usuario sienta rapidez)
-        // El navegador bloqueará el script hasta que se cierre el diálogo de impresión
+        // 4. IMPRIMIR PRIMERO (Esto abre el PDF)
         window.print();
         
-        // 4. LÓGICA DE FONDO (Se ejecuta al cerrar/aceptar la impresión)
-        // Guardar en la nube o local
+        // 5. ENVIAR A GOOGLE SHEETS / GUARDAR LOCAL
+        // (Esto pasa después de que cierras el PDF en el celular)
         if(navigator.onLine) {
             enviarVentaNube(ventaObj);
         } else {
             guardarPendiente(ventaObj);
         }
 
-        // 5. LIMPIEZA Y SIGUIENTE FOLIO
-        // Usamos un pequeño timeout para dar tiempo a que la UI respire
+        // 6. LIMPIEZA
+        // Damos un segundo para que el sistema "respire" tras generar el PDF
         setTimeout(() => {
-            if(confirm("¿El ticket salió bien? (Aceptar para nuevo folio)")) {
+            if(confirm("¿Se generó el ticket correctamente?")) {
                 localStorage.setItem(K_FOLIO, folio + 1);
                 document.getElementById('folio-val').innerText = (folio + 1).toString().padStart(4, '0');
                 limpiar();
             }
-        }, 500);
+        }, 1000);
     }
     
     // Funciones auxiliares POS
