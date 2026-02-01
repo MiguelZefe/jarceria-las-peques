@@ -5,35 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jarcería Las Peques</title>
     <style>
-        /* ESTILOS JARCERÍA (AZUL) */
+        /* ESTILOS PANTALLA (NO IMPRESIÓN) */
         body { font-family: sans-serif; background-color: #e0f7fa; margin: 0; padding: 10px; display: flex; justify-content: center; }
         .main-card { background: white; width: 100%; max-width: 500px; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-top: 5px solid #00acc1; }
         .header { text-align: center; border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px;}
         .logo-img { width: 100px; display: block; margin: 0 auto; }
         h1 { margin: 5px 0; color: #006064; font-size: 22px; text-transform: uppercase; }
+        
+        /* Inputs y Botones */
         .input-group { display: flex; gap: 5px; margin-bottom: 8px; }
         input { padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; width: 100%; }
         .btn { border: none; padding: 12px; border-radius: 6px; cursor: pointer; color: white; width: 100%; font-size: 16px; font-weight:bold;}
         .btn-add { background-color: #00838f; width: auto; flex: 1; }
         .btn-print { background-color: #2e7d32; margin-top: 15px; font-size: 18px; padding: 15px; }
+        
+        /* Tabla y Totales */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
         th { text-align: left; border-bottom: 2px solid #333; }
         td { padding: 8px 2px; border-bottom: 1px dotted #ccc; }
         .text-right { text-align: right; }
         .totales-section { background-color: #f1f8e9; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #c5e1a5; }
         .big-total { font-size: 26px; font-weight: bold; color: #333; display: flex; justify-content: space-between; }
-        
+
+        /* --- TU CSS DE IMPRESIÓN CORREGIDO --- */
         @media print {
             @page { size: auto; margin: 0mm; }
             body { background: white; margin: 0; padding: 0; }
-            .no-print, .input-group, button { display: none !important; }
-            .main-card { display: block !important; box-shadow: none; border: none; width: 100%; padding: 5px; margin: 0; }
+            .no-print, .status-bar, .admin-zone, .input-group, button, #panel-carga { display: none !important; }
+            
+            .main-card { display: block !important; box-shadow: none; border: none; width: 100%; max-width: 100%; padding: 5px; margin: 0; }
             * { color: black !important; }
-            #fecha-ticket-container { display: block !important; }
+            h1 { font-size: 18px; }
+            table { font-size: 12px; width: 100%; }
+            /* Aquí está el tamaño reducido del logo para imprimir */
+            .logo-img { width: 60px; } 
+            #fecha-ticket-container { display: block !important; margin-bottom: 5px; font-size: 12px;}
         }
     </style>
 </head>
 <body>
+
 <div class="main-card">
     <div class="header">
         <img src="jarceria_las_peques.png" alt="Logo" class="logo-img">
@@ -75,18 +86,17 @@
 </div>
 
 <script>
-    // --- PEGA AQUI TU URL ---
-    //const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbx__yNNyhH7Y0e6RAUSYFT3zObF4N-u15jvNAE4jf-V4mq2ugELOD5OOtonQJ9zgxhruA/exec";
-    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwHAO_azGSQpcPIpvzae77xsLLs9gMn-hZ-JWroD8cGBVhaFxtPyzmUv6OhWD6tKgSoTA/exec"
+    // URL DE TU SCRIPT DE GOOGLE
+    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbx__yNNyhH7Y0e6RAUSYFT3zObF4N-u15jvNAE4jf-V4mq2ugELOD5OOtonQJ9zgxhruA/exec";
     
-    // CONFIGURACION ESPECIFICA DE JARCERIA
+    // CONFIGURACION
     const TIPO_TIENDA = "jarceria"; 
     
     let baseDeDatos = {}; let total = 0; let carritoNombres = []; 
 
     window.onload = function() {
         generarNuevoID();
-        // Pedimos productos especificando que somos jarceria
+        // Cargar productos de Jarcería
         if(navigator.onLine) {
             fetch(URL_SCRIPT + "?tipo=" + TIPO_TIENDA) 
             .then(r => r.json()).then(d => { baseDeDatos = d; llenarLista(); });
@@ -101,55 +111,39 @@
         return id;
     }
 
-    // VERSIÓN TURBO SIN RETRASOS
+    // --- FUNCIÓN OPTIMIZADA (TURBO) ---
     function finalizarVenta() {
         if(total <= 0) return;
         
-        // 1. Preparar datos visuales (Instantáneo)
-        let fecha = new Date();
-        document.getElementById('folio-val').innerText = document.getElementById('folio-val').innerText; // Refrescar DOM
-        document.getElementById('fecha-ticket').innerText = fecha.toLocaleDateString() + ' ' + fecha.toLocaleTimeString();
-
-        // 2. Datos para la nube
+        // 1. Datos nube
         let ventaObj = {
             tienda: TIPO_TIENDA, 
-            fecha: fecha.toLocaleDateString(),
-            hora: fecha.toLocaleTimeString(),
+            fecha: new Date().toLocaleDateString(),
+            hora: new Date().toLocaleTimeString(),
             id_unico: document.getElementById('folio-val').innerText,
             total: total,
             metodo: document.querySelector('input[name="pago"]:checked').value === 'tarjeta' ? 'TARJETA' : 'EFECTIVO',
             detalle: carritoNombres.join(", ")
         };
 
-        // 3. IMPRIMIR (Usamos requestAnimationFrame para máxima velocidad)
-        // Esto le dice al navegador: "Imprime en el siguiente frame de video disponible"
+        // 2. IMPRIMIR RÁPIDO
         requestAnimationFrame(() => {
             window.print();
             
-            // 4. Guardar en segundo plano (El usuario no nota esto)
+            // 3. Guardar en segundo plano
             setTimeout(() => {
                 if(navigator.onLine) {
-                    // Enviamos sin esperar respuesta (fire and forget)
-                    fetch(URL_SCRIPT, {
-                        method: 'POST', 
-                        mode: 'no-cors', 
-                        headers: {'Content-Type': 'application/json'}, 
-                        body: JSON.stringify(ventaObj)
-                    });
-                } else {
-                    guardarPendiente(ventaObj); // Guardar si no hay internet
+                    fetch(URL_SCRIPT, {method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(ventaObj)});
                 }
                 
-                // Solo preguntamos si quiere limpiar DESPUÉS de que haya cerrado el diálogo de impresión
-                // El confirm bloquea, así que lo ponemos al final
-                if(confirm("¿Ticket entregado? (Aceptar para limpiar)")) {
+                if(confirm("¿Ticket correcto?")) {
                     limpiar();
                 }
-            }, 500); 
+            }, 500);
         });
     }
     
-    
+    // --- FUNCIONES EXTRA ---
     function agregarProducto() {
         let d=document.getElementById('desc').value, c=parseFloat(document.getElementById('cantidad').value), p=parseFloat(document.getElementById('precio').value);
         if(!d||!c||!p)return;
