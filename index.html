@@ -4,412 +4,135 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jarcería Las Peques</title>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
     <style>
-        /* --- ESTILOS VISUALES (PANTALLA) --- */
+        /* ESTILOS JARCERÍA (AZUL) */
         body { font-family: sans-serif; background-color: #e0f7fa; margin: 0; padding: 10px; display: flex; justify-content: center; }
-        
-        .main-card {
-            background: white; width: 100%; max-width: 500px; padding: 15px;
-            border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-top: 5px solid #00acc1;
-        }
-
-        /* Header */
+        .main-card { background: white; width: 100%; max-width: 500px; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-top: 5px solid #00acc1; }
         .header { text-align: center; border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px;}
-        .logo-img { width: 80px; height: auto; }
+        .logo-img { width: 100px; display: block; margin: 0 auto; }
         h1 { margin: 5px 0; color: #006064; font-size: 22px; text-transform: uppercase; }
-        
-        /* Estado Red */
-        .status-bar { 
-            display: flex; justify-content: space-between; align-items: center; 
-            background: #eceff1; padding: 8px; border-radius: 8px; font-size: 11px; margin-bottom: 10px;
-        }
-        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .online { background: #4caf50; }
-        .offline { background: #f44336; }
-
-        /* Inputs */
         .input-group { display: flex; gap: 5px; margin-bottom: 8px; }
         input { padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; width: 100%; }
-        
-        /* Botones */
-        .btn { border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; width: 100%; font-size: 16px; }
+        .btn { border: none; padding: 12px; border-radius: 6px; cursor: pointer; color: white; width: 100%; font-size: 16px; font-weight:bold;}
         .btn-add { background-color: #00838f; width: auto; flex: 1; }
         .btn-print { background-color: #2e7d32; margin-top: 15px; font-size: 18px; padding: 15px; }
-        .btn-sync { background-color: #ff9800; font-size: 11px; padding: 5px; width: auto; display: none; }
-        .btn-delete { color: red; background: none; border: none; font-size: 20px; padding: 0 10px; }
-
-        /* Tabla */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th { text-align: left; border-bottom: 2px solid #333; color: #555; }
+        th { text-align: left; border-bottom: 2px solid #333; }
         td { padding: 8px 2px; border-bottom: 1px dotted #ccc; }
         .text-right { text-align: right; }
-
-        /* Totales */
         .totales-section { background-color: #f1f8e9; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #c5e1a5; }
         .big-total { font-size: 26px; font-weight: bold; color: #333; display: flex; justify-content: space-between; }
-
-        /* --- ESTILOS DE IMPRESIÓN (PDF) --- */
+        
         @media print {
             @page { size: auto; margin: 0mm; }
             body { background: white; margin: 0; padding: 0; }
-            
-            /* OCULTAR TODO LO QUE NO ES TICKET */
-            .no-print, .status-bar, .admin-zone, .input-group, button { display: none !important; }
-            
-            /* MOSTRAR SOLO EL TICKET */
-            .main-card { 
-                display: block !important; 
-                box-shadow: none; border: none; 
-                width: 100%; max-width: 100%; 
-                padding: 0 10px; margin: 0; 
-            }
-            
-            /* FUERZA NEGRO Y TAMAÑOS */
+            .no-print, .input-group, button { display: none !important; }
+            .main-card { display: block !important; box-shadow: none; border: none; width: 100%; padding: 5px; margin: 0; }
             * { color: black !important; }
-            h1 { font-size: 18px; }
-            table { font-size: 12px; width: 100%; }
-            #fecha-ticket-container { display: block !important; margin-bottom: 5px; font-size: 12px;}
-            
-            /* Ocultar inputs de pago en impresión, mostrar solo texto si fuera necesario */
-            .pago-ui { border-top: 1px solid black; padding-top: 5px; margin-top: 5px;}
+            #fecha-ticket-container { display: block !important; }
         }
     </style>
 </head>
 <body>
-
-    <div class="main-card">
-        <div class="status-bar no-print">
-            <div>
-                <span id="conn-dot" class="dot offline"></span>
-                <span id="conn-text">Offline</span>
-            </div>
-            <button id="btn-sync" class="btn btn-sync" onclick="sincronizarPendientes()">☁️ Subir Pendientes</button>
+<div class="main-card">
+    <div class="header">
+        <img src="jarceria_las_peques.png" alt="Logo" class="logo-img">
+        <h1>Jarcería "Las Peques"</h1>
+        <div id="fecha-ticket-container"><span id="fecha-ticket">--/--/----</span></div>
+        <div style="font-family:monospace; margin-top:5px;">ID: <span id="folio-val">---</span></div>
+    </div>
+    
+    <div class="no-print">
+        <div class="input-group">
+            <input list="lista-productos" id="codigo" placeholder="🔍 Buscar..." onchange="buscarProducto()">
+            <datalist id="lista-productos"></datalist>
         </div>
-
-        <div class="header">
-            <img src="jarceria_las_peques.png" alt="Logo" class="logo-img">
-            <h1>Jarcería "Las Peques"</h1>
-            
-            <div id="fecha-ticket-container">
-                <span id="fecha-ticket">--/--/---- --:--</span>
-            </div>
-            
-            <div style="font-size: 12px; margin-top: 5px;">Folio: #<span id="folio-val">0000</span></div>
-        </div>
-
-        <div class="no-print">
-            <div class="input-group">
-                <input list="lista-productos" id="codigo" placeholder="Buscar producto..." onchange="buscarProducto()">
-                <datalist id="lista-productos"></datalist>
-            </div>
-            <div class="input-group">
-                <input type="text" id="desc" placeholder="Nombre" style="flex:2;">
-                <input type="number" id="cantidad" placeholder="Cant." style="flex:1;">
-                <input type="number" id="precio" placeholder="$" style="flex:1;">
-                <button class="btn btn-add" onclick="agregarProducto()">+</button>
-            </div>
-        </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Cant</th>
-                    <th>Desc</th>
-                    <th class="text-right">$$</th>
-                    <th class="no-print"></th>
-                </tr>
-            </thead>
-            <tbody id="tabla-productos"></tbody>
-        </table>
-
-        <div class="totales-section">
-            <div class="big-total">
-                <span>TOTAL:</span>
-                <span>$<span id="total-pagar">0.00</span></span>
-            </div>
-            
-            <div class="pago-ui no-print">
-                <div style="margin: 10px 0;">
-                    <label style="margin-right:10px;"><input type="radio" name="pago" value="efectivo" checked onclick="togglePago()"> Efec</label>
-                    <label><input type="radio" name="pago" value="tarjeta" onclick="togglePago()"> Tarj</label>
-                </div>
-                <input type="number" id="paga-con" placeholder="Recibido $" oninput="calcCambio()" style="text-align: right;">
-            </div>
-            
-            <div style="display: flex; justify-content: space-between; margin-top: 5px; font-weight: bold;">
-                <span>Cambio:</span>
-                <span>$<span id="cambio">0.00</span></span>
-            </div>
-        </div>
-
-        <div class="no-print">
-            <button class="btn btn-print" onclick="finalizarVenta()">✅ COBRAR E IMPRIMIR</button>
-            <br><br>
-            <div style="text-align: center;">
-                <button onclick="document.getElementById('admin-panel').style.display='block'" style="background:none; border:none; color:#999; text-decoration:underline;">Administrar / Cargar Excel</button>
-            </div>
+        <div class="input-group">
+            <input type="text" id="desc" placeholder="Nombre" style="flex:2;">
+            <input type="number" id="cantidad" placeholder="#" style="flex:1;">
+            <input type="number" id="precio" placeholder="$" style="flex:1;">
+            <button class="btn btn-add" onclick="agregarProducto()">+</button>
         </div>
     </div>
 
-    <div id="admin-panel" class="main-card no-print" style="display: none; margin-top: 20px; background: #eee;">
-        <h3>Administración</h3>
-        <p>Seleccionar Excel (.xlsx)</p>
-        <input type="file" id="inputExcel" accept=".xlsx">
-        <br><br>
-        <button class="btn" style="background:#555;" onclick="location.reload()">Cerrar / Recargar</button>
+    <table>
+        <thead><tr><th>Cant</th><th>Desc</th><th class="text-right">$$</th><th class="no-print"></th></tr></thead>
+        <tbody id="tabla-productos"></tbody>
+    </table>
+
+    <div class="totales-section">
+        <div class="big-total"><span>TOTAL:</span><span>$<span id="total-pagar">0.00</span></span></div>
+        <div class="no-print" style="margin-top:10px;">
+            <label><input type="radio" name="pago" value="efectivo" checked onclick="togglePago()"> Efec</label>
+            <label><input type="radio" name="pago" value="tarjeta" onclick="togglePago()"> Tarj</label>
+            <input type="number" id="paga-con" placeholder="Recibido $" oninput="calcCambio()" style="text-align:right; margin-top:5px;">
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:5px; font-weight:bold;">
+            <span>Cambio:</span><span>$<span id="cambio">0.00</span></span>
+        </div>
     </div>
+    <div class="no-print"><button class="btn btn-print" onclick="finalizarVenta()">✅ COBRAR</button></div>
+</div>
 
 <script>
-    // ============================================
-    // 1. CONFIGURACIÓN
-    // ============================================
-    // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx__yNNyhH7Y0e6RAUSYFT3zObF4N-u15jvNAE4jf-V4mq2ugELOD5OOtonQJ9zgxhruA/exec";
+    // --- PEGA AQUI TU URL ---
+    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbx__yNNyhH7Y0e6RAUSYFT3zObF4N-u15jvNAE4jf-V4mq2ugELOD5OOtonQJ9zgxhruA/exec";
     
-    // VARIABLES GLOBALES
-    let baseDeDatos = {};
-    let total = 0;
-    let carritoNombres = []; 
+    // CONFIGURACION ESPECIFICA DE JARCERIA
+    const TIPO_TIENDA = "jarceria"; 
     
-    // LLAVES MEMORIA
-    const K_BD = 'jarc_bd';
-    const K_FOLIO = 'jarc_folio';
-    const K_PENDIENTES = 'jarc_pendientes';
+    let baseDeDatos = {}; let total = 0; let carritoNombres = []; 
 
-    // ============================================
-    // 2. INICIO
-    // ============================================
     window.onload = function() {
-        checkInternet();
-        cargarDatosLocales();
-        actualizarPendientesUI();
-        
-        // Listeners
-        document.getElementById('inputExcel').addEventListener('change', leerExcel, false);
-        window.addEventListener('online', checkInternet);
-        window.addEventListener('offline', checkInternet);
-        
-        // Reloj inicial
-        ponerFecha();
+        generarNuevoID();
+        // Pedimos productos especificando que somos jarceria
+        if(navigator.onLine) {
+            fetch(URL_SCRIPT + "?tipo=" + TIPO_TIENDA) 
+            .then(r => r.json()).then(d => { baseDeDatos = d; llenarLista(); });
+        }
     };
 
-    function ponerFecha() {
+    function generarNuevoID() {
         const d = new Date();
+        const id = d.getFullYear().toString().substr(-2) + (d.getMonth()+1).toString().padStart(2,'0') + d.getDate().toString().padStart(2,'0') + '-' + d.getHours().toString().padStart(2,'0') + d.getMinutes().toString().padStart(2,'0') + d.getSeconds().toString().padStart(2,'0');
+        document.getElementById('folio-val').innerText = id;
         document.getElementById('fecha-ticket').innerText = d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+        return id;
     }
 
-    // ============================================
-    // 3. FUNCIONES DE VENTA (CORE)
-    // ============================================
     function finalizarVenta() {
-        // Validación
-        if(total <= 0) { alert("Carrito vacío"); return; }
-        
-        // 1. ACTUALIZAR HORA EXACTA
-        ponerFecha(); 
-
-        // 2. PREPARAR DATOS
-        let folio = parseInt(localStorage.getItem(K_FOLIO) || 1);
-        let esTarjeta = document.querySelector('input[name="pago"]:checked').value === 'tarjeta';
-        
+        if(total <= 0) return;
         let ventaObj = {
+            tienda: TIPO_TIENDA, // CLAVE PARA QUE VAYA A LA HOJA CORRECTA
             fecha: new Date().toLocaleDateString(),
             hora: new Date().toLocaleTimeString(),
-            folio: folio,
+            id_unico: document.getElementById('folio-val').innerText,
             total: total,
-            metodo: esTarjeta ? 'TARJETA' : 'EFECTIVO',
+            metodo: document.querySelector('input[name="pago"]:checked').value === 'tarjeta' ? 'TARJETA' : 'EFECTIVO',
             detalle: carritoNombres.join(", ")
         };
-
-        // 3. IMPRIMIR (Aquí es donde se abre el PDF)
-        // Usamos un pequeño retardo para asegurar que la fecha se actualizó en pantalla
-        setTimeout(function() {
-            window.print();
-            
-            // 4. GUARDAR DESPUÉS DE IMPRIMIR
-            // Esperamos un poco para no saturar mientras el usuario ve el PDF
-            setTimeout(function() {
-                if(navigator.onLine) {
-                    enviarVentaNube(ventaObj);
-                } else {
-                    guardarPendiente(ventaObj);
-                }
-                
-                // Confirmación para limpiar
-                if(confirm("¿Se imprimió bien el ticket?")) {
-                    localStorage.setItem(K_FOLIO, folio + 1);
-                    document.getElementById('folio-val').innerText = (folio + 1).toString().padStart(4, '0');
-                    limpiar();
-                }
-            }, 1000);
-            
-        }, 100);
+        window.print();
+        setTimeout(() => {
+            if(navigator.onLine) fetch(URL_SCRIPT, {method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(ventaObj)});
+            if(confirm("¿Listo?")) limpiar();
+        }, 500);
     }
-
+    
     function agregarProducto() {
-        let desc = document.getElementById('desc').value;
-        let cant = parseFloat(document.getElementById('cantidad').value);
-        let precio = parseFloat(document.getElementById('precio').value);
-
-        if(!desc || !cant || !precio) return;
-
-        let sub = cant * precio;
-        total += sub;
-        carritoNombres.push(`(${cant}) ${desc}`);
-
-        let html = `<tr>
-            <td>${cant}</td>
-            <td>${desc}</td>
-            <td class="text-right">$${sub.toFixed(2)}</td>
-            <td class="no-print"><button class="btn-delete" onclick="borrar(this, ${sub})">×</button></td>
-        </tr>`;
-        
-        document.getElementById('tabla-productos').innerHTML += html;
-        updateTotal();
-        
-        // Limpiar campos
-        document.getElementById('codigo').value = "";
-        document.getElementById('desc').value = "";
-        document.getElementById('cantidad').value = "";
-        document.getElementById('precio').value = "";
-        document.getElementById('codigo').focus();
+        let d=document.getElementById('desc').value, c=parseFloat(document.getElementById('cantidad').value), p=parseFloat(document.getElementById('precio').value);
+        if(!d||!c||!p)return;
+        let s=c*p; total+=s; carritoNombres.push(`(${c}) ${d}`);
+        document.getElementById('tabla-productos').innerHTML+=`<tr><td>${c}</td><td>${d}</td><td class="text-right">$${s.toFixed(2)}</td><td class="no-print"><button style="color:red;border:none;background:none" onclick="borrar(this,${s})">x</button></td></tr>`;
+        updateTotal(); limpiarInputs();
     }
-
-    function borrar(btn, val) {
-        btn.closest('tr').remove();
-        total -= val;
-        updateTotal();
-    }
-
-    function updateTotal() {
-        document.getElementById('total-pagar').innerText = total.toFixed(2);
-        togglePago();
-    }
-    
-    function togglePago() {
-        let esTarjeta = document.querySelector('input[name="pago"]:checked').value === 'tarjeta';
-        let input = document.getElementById('paga-con');
-        if(esTarjeta) {
-            input.value = total.toFixed(2);
-            input.disabled = true;
-            document.getElementById('cambio').innerText = "0.00";
-        } else {
-            input.disabled = false;
-            calcCambio();
-        }
-    }
-    
-    function calcCambio() {
-        let pag = parseFloat(document.getElementById('paga-con').value) || 0;
-        document.getElementById('cambio').innerText = (pag - total).toFixed(2);
-    }
-    
-    function buscarProducto() {
-        let c = document.getElementById('codigo').value;
-        if(baseDeDatos[c]) {
-            document.getElementById('desc').value = baseDeDatos[c].nombre;
-            document.getElementById('precio').value = baseDeDatos[c].precio;
-            document.getElementById('cantidad').value = 1;
-        }
-    }
-
-    function limpiar() {
-        total = 0;
-        carritoNombres = [];
-        document.getElementById('tabla-productos').innerHTML = "";
-        updateTotal();
-        document.getElementById('paga-con').value = "";
-        ponerFecha();
-    }
-
-    // ============================================
-    // 4. FUNCIONES NUBE Y EXCEL
-    // ============================================
-    function checkInternet() {
-        let online = navigator.onLine;
-        document.getElementById('conn-dot').className = online ? "dot online" : "dot offline";
-        document.getElementById('conn-text').innerText = online ? "Online" : "Offline";
-        
-        if(online) {
-            let p = JSON.parse(localStorage.getItem(K_PENDIENTES) || "[]");
-            if(p.length > 0) document.getElementById('btn-sync').style.display = "block";
-        }
-    }
-
-    function enviarVentaNube(obj) {
-        if(GOOGLE_SCRIPT_URL.includes("AQUI_PEGA")) {
-            console.log("Falta URL Script"); return;
-        }
-        fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST', mode: 'no-cors',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(obj)
-        }).then(()=>console.log("Enviado")).catch(e=>guardarPendiente(obj));
-    }
-
-    function guardarPendiente(obj) {
-        let list = JSON.parse(localStorage.getItem(K_PENDIENTES) || "[]");
-        list.push(obj);
-        localStorage.setItem(K_PENDIENTES, JSON.stringify(list));
-        actualizarPendientesUI();
-    }
-
-    function actualizarPendientesUI() {
-        let list = JSON.parse(localStorage.getItem(K_PENDIENTES) || "[]");
-        let btn = document.getElementById('btn-sync');
-        if(list.length > 0) {
-            btn.style.display = "block";
-            btn.innerText = `☁️ Subir (${list.length})`;
-        } else {
-            btn.style.display = "none";
-        }
-    }
-
-    function sincronizarPendientes() {
-        let list = JSON.parse(localStorage.getItem(K_PENDIENTES) || "[]");
-        if(list.length === 0) return;
-        if(!navigator.onLine) { alert("Sin internet"); return; }
-        
-        alert("Subiendo ventas...");
-        list.forEach((v, i) => {
-            setTimeout(() => enviarVentaNube(v), i*1200);
-        });
-        localStorage.removeItem(K_PENDIENTES);
-        setTimeout(() => { actualizarPendientesUI(); alert("Listo"); }, list.length*1200 + 500);
-    }
-
-    function cargarDatosLocales() {
-        let d = localStorage.getItem(K_BD);
-        let f = localStorage.getItem(K_FOLIO) || 1;
-        document.getElementById('folio-val').innerText = f.toString().padStart(4, '0');
-        if(d) {
-            baseDeDatos = JSON.parse(d);
-            let dl = document.getElementById('lista-productos');
-            dl.innerHTML = "";
-            for(let k in baseDeDatos) {
-                let op = document.createElement('option');
-                op.value = k;
-                op.label = baseDeDatos[k].nombre;
-                dl.appendChild(op);
-            }
-        }
-    }
-
-    function leerExcel(e) {
-        let reader = new FileReader();
-        reader.onload = function(e) {
-            let wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
-            let json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-            let nuevaBD = {};
-            json.forEach(r => { if(r.id) nuevaBD[r.id] = {nombre: r.nombre, precio: r.precio}; });
-            localStorage.setItem(K_BD, JSON.stringify(nuevaBD));
-            alert("Productos cargados: " + Object.keys(nuevaBD).length);
-            location.reload();
-        };
-        reader.readAsArrayBuffer(e.target.files[0]);
-    }
+    function borrar(b,v){b.closest('tr').remove();total-=v;updateTotal();}
+    function updateTotal(){document.getElementById('total-pagar').innerText=total.toFixed(2);togglePago();}
+    function limpiarInputs(){document.getElementById('codigo').value="";document.getElementById('desc').value="";document.getElementById('cantidad').value="";document.getElementById('precio').value="";document.getElementById('codigo').focus();}
+    function limpiar(){total=0;carritoNombres=[];document.getElementById('tabla-productos').innerHTML="";updateTotal();document.getElementById('paga-con').value="";generarNuevoID();}
+    function buscarProducto(){let c=document.getElementById('codigo').value;if(baseDeDatos[c]){document.getElementById('desc').value=baseDeDatos[c].nombre;document.getElementById('precio').value=baseDeDatos[c].precio;document.getElementById('cantidad').value=1;}}
+    function llenarLista() { let dl=document.getElementById('lista-productos'); dl.innerHTML=""; for(let k in baseDeDatos){let op=document.createElement('option');op.value=k;op.label=baseDeDatos[k].nombre+" ($"+baseDeDatos[k].precio+")";dl.appendChild(op);} }
+    function togglePago(){let t=document.querySelector('input[name="pago"]:checked').value==='tarjeta',i=document.getElementById('paga-con');if(t){i.value=total.toFixed(2);i.disabled=true;document.getElementById('cambio').innerText="0.00"}else{i.disabled=false;calcCambio()}}
+    function calcCambio(){let p=parseFloat(document.getElementById('paga-con').value)||0;document.getElementById('cambio').innerText=(p-total).toFixed(2);}
 </script>
 </body>
 </html>
