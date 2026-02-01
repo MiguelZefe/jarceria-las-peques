@@ -101,23 +101,54 @@
         return id;
     }
 
+    // VERSIÓN TURBO SIN RETRASOS
     function finalizarVenta() {
         if(total <= 0) return;
+        
+        // 1. Preparar datos visuales (Instantáneo)
+        let fecha = new Date();
+        document.getElementById('folio-val').innerText = document.getElementById('folio-val').innerText; // Refrescar DOM
+        document.getElementById('fecha-ticket').innerText = fecha.toLocaleDateString() + ' ' + fecha.toLocaleTimeString();
+
+        // 2. Datos para la nube
         let ventaObj = {
-            tienda: TIPO_TIENDA, // CLAVE PARA QUE VAYA A LA HOJA CORRECTA
-            fecha: new Date().toLocaleDateString(),
-            hora: new Date().toLocaleTimeString(),
+            tienda: TIPO_TIENDA, 
+            fecha: fecha.toLocaleDateString(),
+            hora: fecha.toLocaleTimeString(),
             id_unico: document.getElementById('folio-val').innerText,
             total: total,
             metodo: document.querySelector('input[name="pago"]:checked').value === 'tarjeta' ? 'TARJETA' : 'EFECTIVO',
             detalle: carritoNombres.join(", ")
         };
-        window.print();
-        setTimeout(() => {
-            if(navigator.onLine) fetch(URL_SCRIPT, {method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(ventaObj)});
-            if(confirm("¿Listo?")) limpiar();
-        }, 500);
+
+        // 3. IMPRIMIR (Usamos requestAnimationFrame para máxima velocidad)
+        // Esto le dice al navegador: "Imprime en el siguiente frame de video disponible"
+        requestAnimationFrame(() => {
+            window.print();
+            
+            // 4. Guardar en segundo plano (El usuario no nota esto)
+            setTimeout(() => {
+                if(navigator.onLine) {
+                    // Enviamos sin esperar respuesta (fire and forget)
+                    fetch(URL_SCRIPT, {
+                        method: 'POST', 
+                        mode: 'no-cors', 
+                        headers: {'Content-Type': 'application/json'}, 
+                        body: JSON.stringify(ventaObj)
+                    });
+                } else {
+                    guardarPendiente(ventaObj); // Guardar si no hay internet
+                }
+                
+                // Solo preguntamos si quiere limpiar DESPUÉS de que haya cerrado el diálogo de impresión
+                // El confirm bloquea, así que lo ponemos al final
+                if(confirm("¿Ticket entregado? (Aceptar para limpiar)")) {
+                    limpiar();
+                }
+            }, 500); 
+        });
     }
+    
     
     function agregarProducto() {
         let d=document.getElementById('desc').value, c=parseFloat(document.getElementById('cantidad').value), p=parseFloat(document.getElementById('precio').value);
