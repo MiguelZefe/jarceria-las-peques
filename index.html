@@ -5,16 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jarcería Las Peques</title>
     <style>
-        /* ESTILOS PANTALLA (NO IMPRESIÓN) */
+        /* ESTILOS GENERALES */
         body { font-family: sans-serif; background-color: #e0f7fa; margin: 0; padding: 10px; display: flex; justify-content: center; }
         .main-card { background: white; width: 100%; max-width: 500px; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-top: 5px solid #00acc1; }
+        
         .header { text-align: center; border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px;}
         .logo-img { width: 100px; display: block; margin: 0 auto; }
         h1 { margin: 5px 0; color: #006064; font-size: 22px; text-transform: uppercase; }
         
-        /* Inputs y Botones */
+        /* Inputs */
         .input-group { display: flex; gap: 5px; margin-bottom: 8px; }
         input { padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; width: 100%; }
+        
+        /* Botones */
         .btn { border: none; padding: 12px; border-radius: 6px; cursor: pointer; color: white; width: 100%; font-size: 16px; font-weight:bold;}
         .btn-add { background-color: #00838f; width: auto; flex: 1; }
         .btn-print { background-color: #2e7d32; margin-top: 15px; font-size: 18px; padding: 15px; }
@@ -27,7 +30,7 @@
         .totales-section { background-color: #f1f8e9; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #c5e1a5; }
         .big-total { font-size: 26px; font-weight: bold; color: #333; display: flex; justify-content: space-between; }
 
-        /* --- TU CSS DE IMPRESIÓN CORREGIDO --- */
+        /* ESTILOS DE IMPRESIÓN (Tu versión correcta) */
         @media print {
             @page { size: auto; margin: 0mm; }
             body { background: white; margin: 0; padding: 0; }
@@ -37,8 +40,7 @@
             * { color: black !important; }
             h1 { font-size: 18px; }
             table { font-size: 12px; width: 100%; }
-            /* Aquí está el tamaño reducido del logo para imprimir */
-            .logo-img { width: 60px; } 
+            .logo-img { width: 60px; } /* Logo pequeño para imprimir rápido */
             #fecha-ticket-container { display: block !important; margin-bottom: 5px; font-size: 12px;}
         }
     </style>
@@ -48,9 +50,12 @@
 <div class="main-card">
     <div class="header">
         <img src="jarceria_las_peques.png" alt="Logo" class="logo-img">
+        
         <h1>Jarcería "Las Peques"</h1>
+        
         <div id="fecha-ticket-container"><span id="fecha-ticket">--/--/----</span></div>
-        <div style="font-family:monospace; margin-top:5px;">ID: <span id="folio-val">---</span></div>
+        
+        <div style="font-family:monospace; margin-top:5px;">ID VENTA: <span id="folio-val">---</span></div>
     </div>
     
     <div class="no-print">
@@ -86,80 +91,174 @@
 </div>
 
 <script>
-    // URL DE TU SCRIPT DE GOOGLE
-    //const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbx__yNNyhH7Y0e6RAUSYFT3zObF4N-u15jvNAE4jf-V4mq2ugELOD5OOtonQJ9zgxhruA/exec";
-    const URL_SCRIPT = https:"//script.google.com/macros/s/AKfycbwHAO_azGSQpcPIpvzae77xsLLs9gMn-hZ-JWroD8cGBVhaFxtPyzmUv6OhWD6tKgSoTA/exec";
-    
-    // CONFIGURACION
+    // --- TU URL DEL SCRIPT ---
+    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbx__yNNyhH7Y0e6RAUSYFT3zObF4N-u15jvNAE4jf-V4mq2ugELOD5OOtonQJ9zgxhruA/exec";
+    //https://script.google.com/macros/s/AKfycbwHAO_azGSQpcPIpvzae77xsLLs9gMn-hZ-JWroD8cGBVhaFxtPyzmUv6OhWD6tKgSoTA/exec
     const TIPO_TIENDA = "jarceria"; 
     
-    let baseDeDatos = {}; let total = 0; let carritoNombres = []; 
+    let baseDeDatos = {}; 
+    let total = 0; 
+    let carritoNombres = []; 
 
-    window.onload = function() {
-        generarNuevoID();
-        // Cargar productos de Jarcería
+    // 1. ESTA FUNCIÓN SE EJECUTA AL CARGAR LA PÁGINA
+    window.addEventListener('load', function() {
+        generarNuevoID(); // Forzamos la creación del ID al entrar
+        
         if(navigator.onLine) {
             fetch(URL_SCRIPT + "?tipo=" + TIPO_TIENDA) 
             .then(r => r.json()).then(d => { baseDeDatos = d; llenarLista(); });
         }
-    };
+    });
 
+    // Función que crea ID y Fecha
     function generarNuevoID() {
         const d = new Date();
-        const id = d.getFullYear().toString().substr(-2) + (d.getMonth()+1).toString().padStart(2,'0') + d.getDate().toString().padStart(2,'0') + '-' + d.getHours().toString().padStart(2,'0') + d.getMinutes().toString().padStart(2,'0') + d.getSeconds().toString().padStart(2,'0');
-        document.getElementById('folio-val').innerText = id;
-        document.getElementById('fecha-ticket').innerText = d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+        // Formato ID: AñoMesDia-HoraMinutosSegundos (Ej: 240201-183005)
+        const id = d.getFullYear().toString().substr(-2) + 
+                   (d.getMonth()+1).toString().padStart(2,'0') + 
+                   d.getDate().toString().padStart(2,'0') + '-' + 
+                   d.getHours().toString().padStart(2,'0') + 
+                   d.getMinutes().toString().padStart(2,'0') + 
+                   d.getSeconds().toString().padStart(2,'0');
+                   
+        let folioEl = document.getElementById('folio-val');
+        let fechaEl = document.getElementById('fecha-ticket');
+        
+        if(folioEl) folioEl.innerText = id;
+        if(fechaEl) fechaEl.innerText = d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+        
         return id;
     }
 
-    // --- FUNCIÓN OPTIMIZADA (TURBO) ---
+    // --- PROCESO DE VENTA (TURBO) ---
     function finalizarVenta() {
-        if(total <= 0) return;
+        if(total <= 0) { alert("Agrega productos primero"); return; }
         
-        // 1. Datos nube
+        // 2. ACTUALIZAR HORA EXACTA ANTES DE IMPRIMIR
+        // Regeneramos fecha visual para que salga exacta en el ticket
+        let d = new Date();
+        document.getElementById('fecha-ticket').innerText = d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+        
+        // Aseguramos que haya un ID
+        let idActual = document.getElementById('folio-val').innerText;
+        if(idActual === "---" || idActual === "") {
+            idActual = generarNuevoID();
+        }
+
         let ventaObj = {
             tienda: TIPO_TIENDA, 
-            fecha: new Date().toLocaleDateString(),
-            hora: new Date().toLocaleTimeString(),
-            id_unico: document.getElementById('folio-val').innerText,
+            fecha: d.toLocaleDateString(),
+            hora: d.toLocaleTimeString(),
+            id_unico: idActual,
             total: total,
             metodo: document.querySelector('input[name="pago"]:checked').value === 'tarjeta' ? 'TARJETA' : 'EFECTIVO',
             detalle: carritoNombres.join(", ")
         };
 
-        // 2. IMPRIMIR RÁPIDO
+        // 3. IMPRIMIR SIN ESPERAS
         requestAnimationFrame(() => {
             window.print();
             
-            // 3. Guardar en segundo plano
+            // Guardar en la nube en segundo plano
             setTimeout(() => {
                 if(navigator.onLine) {
                     fetch(URL_SCRIPT, {method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(ventaObj)});
                 }
                 
-                if(confirm("¿Ticket correcto?")) {
+                // Limpiar solo si confirma
+                if(confirm("¿Venta Finalizada Correctamente?")) {
                     limpiar();
                 }
             }, 500);
         });
     }
     
-    // --- FUNCIONES EXTRA ---
+    // --- FUNCIONES AUXILIARES ---
     function agregarProducto() {
-        let d=document.getElementById('desc').value, c=parseFloat(document.getElementById('cantidad').value), p=parseFloat(document.getElementById('precio').value);
-        if(!d||!c||!p)return;
-        let s=c*p; total+=s; carritoNombres.push(`(${c}) ${d}`);
-        document.getElementById('tabla-productos').innerHTML+=`<tr><td>${c}</td><td>${d}</td><td class="text-right">$${s.toFixed(2)}</td><td class="no-print"><button style="color:red;border:none;background:none" onclick="borrar(this,${s})">x</button></td></tr>`;
-        updateTotal(); limpiarInputs();
+        let d=document.getElementById('desc').value;
+        let c=parseFloat(document.getElementById('cantidad').value);
+        let p=parseFloat(document.getElementById('precio').value);
+        
+        if(!d||!c||!p) return;
+        
+        let s=c*p; 
+        total+=s; 
+        carritoNombres.push(`(${c}) ${d}`);
+        
+        // Agregar a la tabla HTML
+        document.getElementById('tabla-productos').innerHTML += 
+            `<tr>
+                <td>${c}</td>
+                <td>${d}</td>
+                <td class="text-right">$${s.toFixed(2)}</td>
+                <td class="no-print"><button style="color:red;border:none;background:none;font-size:18px;cursor:pointer;" onclick="borrar(this,${s})">×</button></td>
+            </tr>`;
+            
+        updateTotal(); 
+        limpiarInputs();
     }
-    function borrar(b,v){b.closest('tr').remove();total-=v;updateTotal();}
-    function updateTotal(){document.getElementById('total-pagar').innerText=total.toFixed(2);togglePago();}
-    function limpiarInputs(){document.getElementById('codigo').value="";document.getElementById('desc').value="";document.getElementById('cantidad').value="";document.getElementById('precio').value="";document.getElementById('codigo').focus();}
-    function limpiar(){total=0;carritoNombres=[];document.getElementById('tabla-productos').innerHTML="";updateTotal();document.getElementById('paga-con').value="";generarNuevoID();}
-    function buscarProducto(){let c=document.getElementById('codigo').value;if(baseDeDatos[c]){document.getElementById('desc').value=baseDeDatos[c].nombre;document.getElementById('precio').value=baseDeDatos[c].precio;document.getElementById('cantidad').value=1;}}
-    function llenarLista() { let dl=document.getElementById('lista-productos'); dl.innerHTML=""; for(let k in baseDeDatos){let op=document.createElement('option');op.value=k;op.label=baseDeDatos[k].nombre+" ($"+baseDeDatos[k].precio+")";dl.appendChild(op);} }
-    function togglePago(){let t=document.querySelector('input[name="pago"]:checked').value==='tarjeta',i=document.getElementById('paga-con');if(t){i.value=total.toFixed(2);i.disabled=true;document.getElementById('cambio').innerText="0.00"}else{i.disabled=false;calcCambio()}}
-    function calcCambio(){let p=parseFloat(document.getElementById('paga-con').value)||0;document.getElementById('cambio').innerText=(p-total).toFixed(2);}
+
+    function borrar(b,v){ b.closest('tr').remove(); total-=v; updateTotal(); }
+    
+    function updateTotal(){ 
+        document.getElementById('total-pagar').innerText=total.toFixed(2); 
+        togglePago(); 
+    }
+    
+    function limpiarInputs(){ 
+        document.getElementById('codigo').value=""; 
+        document.getElementById('desc').value=""; 
+        document.getElementById('cantidad').value=""; 
+        document.getElementById('precio').value=""; 
+        document.getElementById('codigo').focus(); 
+    }
+    
+    function limpiar(){ 
+        total=0; 
+        carritoNombres=[]; 
+        document.getElementById('tabla-productos').innerHTML=""; 
+        updateTotal(); 
+        document.getElementById('paga-con').value=""; 
+        generarNuevoID(); // Generar NUEVO ID para la siguiente venta
+    }
+    
+    function buscarProducto(){ 
+        let c=document.getElementById('codigo').value; 
+        if(baseDeDatos[c]){ 
+            document.getElementById('desc').value=baseDeDatos[c].nombre; 
+            document.getElementById('precio').value=baseDeDatos[c].precio; 
+            document.getElementById('cantidad').value=1; 
+        } 
+    }
+    
+    function llenarLista() { 
+        let dl=document.getElementById('lista-productos'); 
+        dl.innerHTML=""; 
+        for(let k in baseDeDatos){ 
+            let op=document.createElement('option'); 
+            op.value=k; 
+            op.label=baseDeDatos[k].nombre+" ($"+baseDeDatos[k].precio+")"; 
+            dl.appendChild(op); 
+        } 
+    }
+    
+    function togglePago(){ 
+        let t=document.querySelector('input[name="pago"]:checked').value==='tarjeta';
+        let i=document.getElementById('paga-con');
+        if(t){ 
+            i.value=total.toFixed(2); 
+            i.disabled=true; 
+            document.getElementById('cambio').innerText="0.00";
+        } else { 
+            i.disabled=false; 
+            calcCambio(); 
+        }
+    }
+    
+    function calcCambio(){ 
+        let p=parseFloat(document.getElementById('paga-con').value)||0; 
+        document.getElementById('cambio').innerText=(p-total).toFixed(2); 
+    }
 </script>
 </body>
 </html>
