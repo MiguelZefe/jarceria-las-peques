@@ -217,21 +217,30 @@
         generarNuevoID(); 
     }
     
-    function buscarProducto(){ 
-        let c=document.getElementById('codigo').value; 
-        if(baseDeDatos[c]){ 
-            document.getElementById('desc').value=baseDeDatos[c].nombre; 
-            document.getElementById('precio').value=baseDeDatos[c].precio; 
-            document.getElementById('cantidad').value=1; 
+    function llenarLista() { 
+        let dl = document.getElementById('lista-productos'); 
+        dl.innerHTML = ""; 
+        for (let k in baseDeDatos) { 
+            let op = document.createElement('option'); 
+            // 🌟 CAMBIO AQUÍ: Ahora el valor principal de búsqueda es el NOMBRE
+            op.value = baseDeDatos[k].nombre; 
+            dl.appendChild(op); 
         } 
     }
-    
-    function llenarLista() { 
-        let dl=document.getElementById('lista-productos'); dl.innerHTML=""; 
-        for(let k in baseDeDatos){ 
-            let op=document.createElement('option'); op.value=k; 
-            op.label=baseDeDatos[k].nombre+" ($"+baseDeDatos[k].precio+")"; dl.appendChild(op); 
-        } 
+
+    function buscarProducto() { 
+        let textoBuscado = document.getElementById('codigo').value; 
+        
+        // 🌟 CAMBIO AQUÍ: Recorremos la base de datos buscando coincidencias por nombre
+        for (let k in baseDeDatos) {
+            if (baseDeDatos[k].nombre === textoBuscado) {
+                document.getElementById('desc').value = baseDeDatos[k].nombre; 
+                document.getElementById('precio').value = baseDeDatos[k].precio; 
+                document.getElementById('cantidad').value = 1; 
+                document.getElementById('cantidad').focus(); // Pasa el cursor a la cantidad automáticamente
+                return; // Detenemos la búsqueda porque ya lo encontró
+            }
+        }
     }
     
     function togglePago(){ 
